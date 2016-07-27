@@ -42,16 +42,16 @@ class KurentoTransport(object):
         self.stopped = True
         self.ws.close()
 
-    def _check_connection(self):
-        if self.ws.closed:
-            logger.info("Kurent Client websocket is not connected, reconnecting")
-            try:
-                with Timeout(seconds=5):
-                    self.ws = yield from aiohttp.ws_connect(self.url)
-                    logger.info("Kurent Client websocket connected!")
-            except TimeoutException:
-                # modifying this exception so we can differentiate in the receiver thread
-                raise KurentoTransportException("Timeout: Kurento Client websocket connection timed out")
+    # def _check_connection(self):
+    #     if self.ws.closed:
+    #         logger.info("Kurent Client websocket is not connected, reconnecting")
+    #         try:
+    #             with Timeout(seconds=5):
+    #                 self.ws = yield from aiohttp.ws_connect(self.url)
+    #                 logger.info("Kurent Client websocket connected!")
+    #         except TimeoutException:
+    #             # modifying this exception so we can differentiate in the receiver thread
+    #             raise KurentoTransportException("Timeout: Kurento Client websocket connection timed out")
 
     @asyncio.coroutine
     def _run_thread(self):
@@ -113,7 +113,7 @@ class KurentoTransport(object):
         self.ws.send_str(json.dumps(request))
         # TODO: Переделать нормально
         while (resp_key not in self.pending_operations):
-            yield from asyncio.sleep(0.05)  # wait 50 ms
+            yield from asyncio.sleep(0.50)  # wait 50 ms
         resp = self.pending_operations[resp_key]
 
         del self.pending_operations[req_key]
@@ -133,8 +133,8 @@ class KurentoTransport(object):
     def invoke(self, object_id, operation, **args):
         return self._rpc("invoke", object=object_id, operation=operation, operationParams=args)
 
-    async def subscribe(self, object_id, event_type, fn):
-        subscription_id = await self._rpc("subscribe", object=object_id, type=event_type)
+    def subscribe(self, object_id, event_type, fn):
+        subscription_id = yield from self._rpc("subscribe", object=object_id, type=event_type)
         self.subscriptions[object_id] = fn
         return subscription_id
 

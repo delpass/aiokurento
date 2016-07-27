@@ -23,10 +23,10 @@ class KurentoClient(object):
         """
         return await media.MediaPipeline(self).create()
 
-    async def get_pipeline(self, id):
+    async def get_pipeline(self, _id):
         """
         Get media pipeline by id
-        :param id: <integer> pipeline id
+        :param _id: <integer> pipeline id
         :return: <MediaPipeline>
         """
-        return media.MediaPipeline(self, id=id)
+        return media.MediaPipeline(self, id=_id)
