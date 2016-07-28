@@ -31,9 +31,9 @@ class KurentoTransport(object):
         self.pending_operations = {}
         self.subscriptions = {}
         self.stopped = False
-        # asyncio.ensure_future(self._run_thread())
-        loop = asyncio.get_event_loop()
-        self.task = loop.create_task(self._run_thread())
+        asyncio.ensure_future(self._run_thread())
+        # loop = asyncio.get_event_loop()
+        # self.task = loop.create_task(self._run_thread())
 
     def connect(self):
         print("KURENTO connect", self.url)
@@ -149,4 +149,3 @@ class KurentoTransport(object):
 
     def stop(self):
         self.ws.close()
-        self.task.cancel()
