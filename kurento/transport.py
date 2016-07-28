@@ -112,6 +112,8 @@ class KurentoTransport(object):
         # if self.ws is None:
         #     yield from self.connect()
         logger.debug("KURENTO sending message:  %s" % json.dumps(request))
+        if self.ws is None:
+            yield from self.connect()
         self.ws.send_str(json.dumps(request))
         # TODO: Переделать нормально
         while (resp_key not in self.pending_operations):
