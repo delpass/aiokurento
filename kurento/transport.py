@@ -138,6 +138,7 @@ class KurentoTransport(object):
         return self._rpc("invoke", object=object_id, operation=operation, operationParams=args)
 
     def subscribe(self, object_id, event_type, fn):
+        logging.debug('======================================================')
         subscription_id = yield from self._rpc("subscribe", object=object_id, type=event_type)
         self.subscriptions[object_id] = fn
         return subscription_id
