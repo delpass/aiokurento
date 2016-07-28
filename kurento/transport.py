@@ -22,7 +22,7 @@ class KurentoTransport(object):
     ws = None
 
     def __init__(self, url):
-        print("KURENTO Creating new Transport with url: %s" % url)
+        logging.debug("KURENTO Creating new Transport with url: %s" % url)
         self.url = url
         self.session = aiohttp.ClientSession()
         # self.ws = await websockets.connect(url)
@@ -31,13 +31,13 @@ class KurentoTransport(object):
         self.pending_operations = {}
         self.subscriptions = {}
         self.stopped = False
-        asyncio.ensure_future(self._run_thread())
         # loop = asyncio.get_event_loop()
         # self.task = loop.create_task(self._run_thread())
 
-    def connect(self):
-        print("KURENTO connect", self.url)
-        self.ws = yield from self.session.ws_connect(self.url)
+    async def connect(self):
+        self.ws = await self.session.ws_connect(self.url)
+        asyncio.ensure_future(self._run_thread())
+        logging.debug("KURENTO connected %s" % self.url)
 
     def __del__(self):
         logger.debug("Destroying KurentoTransport with url: %s" % self.url)
