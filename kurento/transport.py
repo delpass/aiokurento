@@ -86,7 +86,7 @@ class KurentoTransport(object):
             if (resp['method'] == 'onEvent' and 'params' in resp and 'value' in resp['params'] and
                     'type' in resp['params']['value'] and resp['params']['value']['object'] in self.subscriptions):
                 sub_id = str(resp['params']['value']['object'])
-i               logging.warning(sub_id)
+                logging.warning("sub_id %s" % sub_id)
                 fn = self.subscriptions[sub_id]
                 self.session_id = resp['params']['sessionId'] if 'sessionId' in resp['params'] else self.session_id
                 fn(resp["params"]["value"])
