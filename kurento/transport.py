@@ -28,6 +28,24 @@ else:
         return asyncio.Future(loop=loop)
 
 
+def _set_result(fut, result):
+    if fut.done():
+        logger.debug("Waiter future is already done %r", fut)
+        assert fut.cancelled(), (
+            "waiting future is in wrong state", fut, result)
+    else:
+        fut.set_result(result)
+
+
+def _set_exception(fut, exception):
+    if fut.done():
+        logger.debug("Waiter future is already done %r", fut)
+        assert fut.cancelled(), (
+            "waiting future is in wrong state", fut, exception)
+    else:
+        fut.set_exception(exception)
+
+
 class KurentoTransport(object):
     _ws = None
     _waiters = deque()
@@ -43,7 +61,8 @@ class KurentoTransport(object):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
-        self._reader_task = asyncio.ensure_future(self._reader())
+        self._reader_task = asyncio.ensure_future(self._reader(),
+                                                  loop=self._loop)
 
     def __del__(self):
         logger.debug("Destroying KurentoTransport with url: %s" % self.url)
@@ -52,7 +71,7 @@ class KurentoTransport(object):
 
     async def _reader(self):
         logging.debug("KURENTO connected %s" % self.url)
-        await self.session.ws_connect(self.url)
+        self._ws = await self.session.ws_connect(self.url)
         while not self.stopped:
             msg = await self._ws.receive()
             if msg.tp == aiohttp.MsgType.text:
@@ -71,34 +90,39 @@ class KurentoTransport(object):
         return self.current_id
 
     def _on_message(self, message):
+        waiter = self._waiters.popleft()
         resp = json.loads(message)
         logger.debug("KURENTO received message: %s" % message)
-
-        if 'error' in resp:
-            error = resp['error'].get('message', 'Unknown Error')
-            raise KurentoTransportException(error, resp)
-        elif 'result' in resp and 'value' in resp['result']:
-            return resp['result']['value']
 
         if 'method' in resp:
             if resp['method'] == 'onEvent':
                 print("SUBSCRIPTIONS", self.subscriptions)
             if (resp['method'] == 'onEvent' and
-                    'params' in resp and
-                    'value' in resp['params'] and
-                    'type' in resp['params']['value'] and
-                    resp['params']['value']['object'] in self.subscriptions):
+                        'params' in resp and
+                        'value' in resp['params'] and
+                        'type' in resp['params']['value'] and
+                        resp['params']['value']['object'] in self.subscriptions):
                 sub_id = str(resp['params']['value']['object'])
                 logging.warning("sub_id %s" % sub_id)
                 fn = self.subscriptions[sub_id]
                 self.session_id = resp['params']['sessionId'] if 'sessionId' in resp['params'] else self.session_id
                 fn(resp["params"]["value"])
+                return None
+            if resp['method'] == 'onEvent':
+                print("SUB NOT FOUND!!!!11111")
+                print(resp)
+
+        elif 'error' in resp:
+            error = resp['error'].get('message', 'Unknown Error')
+            _set_exception(waiter, KurentoTransportException(error, resp))
+        elif 'result' in resp and 'value' in resp['result']:
+            _set_result(waiter, resp['result']['value'])
 
         else:
             if 'result' in resp and 'sessionId' in resp['result']:
                 self.session_id = resp['result']['sessionId']
 
-    async def _rpc(self, rpc_type, **args):
+    def _rpc(self, rpc_type, **args):
         if self.session_id:
             args["sessionId"] = self.session_id
 
@@ -109,32 +133,33 @@ class KurentoTransport(object):
           "params": args
         }
         logger.debug("KURENTO sending message:  %s" % json.dumps(request))
+        # print(request)
         fut = create_future(loop=self._loop)
         self._ws.send_str(json.dumps(request))
-        self._waiters.append((fut,))
+        self._waiters.append(fut)
         return fut
 
-    async def create(self, obj_type, **args):
-        rpc = await self._rpc("create", type=obj_type, constructorParams=args)
-        return rpc
+    def create(self, obj_type, **args):
+        return self._rpc("create", type=obj_type, constructorParams=args)
 
-    async def invoke(self, object_id, operation, **args):
-        return await self._rpc("invoke", object=object_id, operation=operation,
-                               operationParams=args)
+    def invoke(self, object_id, operation, **args):
+        return self._rpc("invoke", object=object_id, operation=operation,
+                         operationParams=args)
 
     async def subscribe(self, object_id, event_type, fn):
-        logging.debug('======================================================')
+        logging.debug('+-==================================================_=')
         subscription_id = await self._rpc("subscribe", object=object_id,
                                           type=event_type)
         self.subscriptions[str(object_id)] = fn
+        print(self.subscriptions)
         return subscription_id
 
-    async def unsubscribe(self, subscription_id):
+    def unsubscribe(self, subscription_id):
         del self.subscriptions[subscription_id]
-        return await self._rpc("unsubscribe", subscription=subscription_id)
+        return self._rpc("unsubscribe", subscription=subscription_id)
 
-    async def release(self, object_id):
-        return await self._rpc("release", object=object_id)
+    def release(self, object_id):
+        return self._rpc("release", object=object_id)
 
-    async def stop(self):
+    def stop(self):
         self._ws.close()
