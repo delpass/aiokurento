@@ -26,5 +26,6 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-    ], requires=[]
+    ],
+    install_requires=['aiohttp']
 )
