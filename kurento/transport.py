@@ -66,26 +66,30 @@ class KurentoTransport(object):
         self._reader_task = asyncio.ensure_future(self._reader(),
                                                   loop=self._loop)
 
-    def __del__(self):
-        logger.debug("Destroying KurentoTransport with url: %s" % self.url)
-        self.stopped = True
-        self._ws.close()
+    # def __del__(self):
+    #     logger.debug("Destroying KurentoTransport with url: %s" % self.url)
+    #     self.stopped = True
+    #     self._ws.close()
 
     async def _reader(self):
-        logging.debug("KURENTO connected %s" % self.url)
-        self._ws = await self.session.ws_connect(self.url)
         while not self.stopped:
-            msg = await self._ws.receive()
-            if msg.tp == aiohttp.MsgType.text:
-                if msg.data == 'close':
-                    await self._ws.close()
+            logging.debug("KURENTO connected %s" % self.url)
+            try:
+                self._ws = await self.session.ws_connect(self.url)
+                msg = await self._ws.receive()
+                if msg.tp == aiohttp.MsgType.text:
+                    if msg.data == 'close':
+                        await self._ws.close()
+                        break
+                    else:
+                        self._on_message(msg.data)
+                elif msg.tp == aiohttp.MsgType.closed:
                     break
-                else:
-                    self._on_message(msg.data)
-            elif msg.tp == aiohttp.MsgType.closed:
-                break
-            elif msg.tp == aiohttp.MsgType.error:
-                break
+                elif msg.tp == aiohttp.MsgType.error:
+                    break
+            except aiohttp.errors.ServerDisconnectedError:
+                logging.debug("KURENTO drop conection %s" % self.url)
+        return None
 
     def _next_id(self):
         self.current_id = uuid4().hex
@@ -164,5 +168,8 @@ class KurentoTransport(object):
     def release(self, object_id):
         return self._rpc("release", object=object_id)
 
-    def stop(self):
-        self._ws.close()
+    async def stop(self):
+        logger.debug("Destroying KurentoTransport with url: %s" % self.url)
+        self.stopped = True
+        await self._ws.close()
+        await self.session.close()
