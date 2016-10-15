@@ -111,7 +111,7 @@ class KurentoTransport(object):
                 fn = self.subscriptions[sub_id]
                 self.session_id = resp['params'].get('sessionId',
                                                      self.session_id)
-                fn(resp["params"]["value"])
+                asyncio.ensure_future(fn(resp["params"]["value"]))
                 return None
             if resp['method'] == 'onEvent':
                 print("SUB NOT FOUND!!!!11111")
