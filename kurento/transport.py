@@ -72,24 +72,23 @@ class KurentoTransport(object):
     #     self._ws.close()
 
     async def _reader(self):
+        logging.debug("KURENTO connected %s" % self.url)
+        self._ws = await self.session.ws_connect(self.url)
         while not self.stopped:
-            logging.debug("KURENTO connected %s" % self.url)
-            try:
-                self._ws = await self.session.ws_connect(self.url)
-                msg = await self._ws.receive()
-                if msg.tp == aiohttp.MsgType.text:
-                    if msg.data == 'close':
-                        await self._ws.close()
-                        break
-                    else:
-                        self._on_message(msg.data)
-                elif msg.tp == aiohttp.MsgType.closed:
+            msg = await self._ws.receive()
+            if msg.tp == aiohttp.MsgType.text:
+                if msg.data == 'close':
+                    await self._ws.close()
                     break
-                elif msg.tp == aiohttp.MsgType.error:
-                    break
-            except aiohttp.errors.ServerDisconnectedError:
-                logging.debug("KURENTO drop conection %s" % self.url)
-        return None
+                else:
+                    self._on_message(msg.data)
+            elif msg.tp == aiohttp.MsgType.closed:
+                break
+            elif msg.tp == aiohttp.MsgType.error:
+                break
+            # except aiohttp.errors.ServerDisconnectedError:
+            #     logging.debug("KURENTO drop conection %s" % self.url)
+        # return None
 
     def _next_id(self):
         self.current_id = uuid4().hex
