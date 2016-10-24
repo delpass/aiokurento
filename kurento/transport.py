@@ -79,13 +79,16 @@ class KurentoTransport(object):
             if msg.tp == aiohttp.MsgType.text:
                 if msg.data == 'close':
                     await self._ws.close()
-                    break
+                    self._ws = await self.session.ws_connect(self.url)
+                    # break
                 else:
-                    self._on_message(msg.data)
+                    await self._on_message(msg.data)
             elif msg.tp == aiohttp.MsgType.closed:
-                break
+                self._ws = await self.session.ws_connect(self.url)
+                # break
             elif msg.tp == aiohttp.MsgType.error:
-                break
+                self._ws = await self.session.ws_connect(self.url)
+                # break
             # except aiohttp.errors.ServerDisconnectedError:
             #     logging.debug("KURENTO drop conection %s" % self.url)
         # return None
@@ -94,7 +97,7 @@ class KurentoTransport(object):
         self.current_id = uuid4().hex
         return str(self.current_id)
 
-    def _on_message(self, message):
+    async def _on_message(self, message):
         resp = json.loads(message)
         logger.debug("KURENTO received message: %s" % message)
         msg_id = str(resp.get('id'))
@@ -112,6 +115,7 @@ class KurentoTransport(object):
                 self.session_id = resp['params'].get('sessionId',
                                                      self.session_id)
                 asyncio.ensure_future(fn(resp["params"]["value"]))
+                # await task
                 return None
             if resp['method'] == 'onEvent':
                 print("SUB NOT FOUND!!!!11111")

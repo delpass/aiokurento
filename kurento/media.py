@@ -72,11 +72,11 @@ class MediaObject(object):
         :param fn: <function> callback
         :return: <string> subscription id
         """
-        def _callback(value):
-            fn(value, self)
+        async def _callback(value):
+            await fn(value, self)
         return self.get_transport().subscribe(self.id, event, _callback)
 
-    def release(self):
+    async def release(self):
         """
         KMS Release method
         :return: <None>
