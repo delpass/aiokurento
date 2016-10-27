@@ -81,7 +81,7 @@ class MediaObject(object):
         KMS Release method
         :return: <None>
         """
-        return self.get_transport().release(self.id)
+        return await self.get_transport().release(self.id)
 
 
 class MediaPipeline(MediaObject):

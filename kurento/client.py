@@ -3,12 +3,12 @@ from .transport import KurentoTransport
 
 
 class KurentoClient(object):
-    def __init__(self, url):
+    def __init__(self, url, debug=False):
         """
         :param url: KWS websocket url
         """
         self.url = url
-        self.transport = KurentoTransport(self.url)
+        self.transport = KurentoTransport(self.url, debug=debug)
 
     def get_transport(self):
         """

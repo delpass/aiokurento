@@ -52,8 +52,10 @@ class KurentoTransport(object):
     # _waiters = deque()
     _waiters = {}
 
-    def __init__(self, url, loop=None):
-        logging.debug("KURENTO Creating new Transport with url: %s" % url)
+    def __init__(self, url, loop=None, debug=False):
+        if debug:
+            logging.debug("KURENTO Creating new Transport with url: %s" % url)
+        self.debug = debug
         self.url = url
         self.session = aiohttp.ClientSession()
         self.current_id = 0
@@ -72,7 +74,8 @@ class KurentoTransport(object):
     #     self._ws.close()
 
     async def _reader(self):
-        logging.debug("KURENTO connected %s" % self.url)
+        if self.debug:
+            logging.debug("KURENTO connected %s" % self.url)
         self._ws = await self.session.ws_connect(self.url)
         while not self.stopped:
             msg = await self._ws.receive()
@@ -99,18 +102,20 @@ class KurentoTransport(object):
 
     async def _on_message(self, message):
         resp = json.loads(message)
-        logger.debug("KURENTO received message: %s" % message)
+        if self.debug:
+            logger.debug("KURENTO received message: %s" % message)
         msg_id = str(resp.get('id'))
         if 'method' in resp:
-            if resp['method'] == 'onEvent':
-                print("SUBSCRIPTIONS", self.subscriptions)
+            # if resp['method'] == 'onEvent':
+            #     print("SUBSCRIPTIONS", self.subscriptions)
             if (resp['method'] == 'onEvent' and
                     'params' in resp and
                     'value' in resp['params'] and
                     'type' in resp['params']['value'] and
                     resp['params']['value']['object'] in self.subscriptions):
                 sub_id = str(resp['params']['value']['object'])
-                logging.warning("sub_id %s" % sub_id)
+                if self.debug:
+                    logging.warning("sub_id %s" % sub_id)
                 fn = self.subscriptions[sub_id]
                 self.session_id = resp['params'].get('sessionId',
                                                      self.session_id)
@@ -143,7 +148,8 @@ class KurentoTransport(object):
           "method": rpc_type,
           "params": args
         }
-        logger.debug("KURENTO sending message:  %s" % json.dumps(request))
+        if self.debug:
+            logger.debug("KURENTO sending message:  %s" % json.dumps(request))
         # print(request)
         fut = create_future(loop=self._loop)
         self._ws.send_str(json.dumps(request))
@@ -158,7 +164,6 @@ class KurentoTransport(object):
                          operationParams=args)
 
     async def subscribe(self, object_id, event_type, fn):
-        logging.debug('+-==================================================_=')
         subscription_id = await self._rpc("subscribe", object=object_id,
                                           type=event_type)
         self.subscriptions[str(object_id)] = fn
@@ -172,7 +177,8 @@ class KurentoTransport(object):
         return self._rpc("release", object=object_id)
 
     async def stop(self):
-        logger.debug("Destroying KurentoTransport with url: %s" % self.url)
+        if self.debug:
+            logger.debug("Destroying KurentoTransport with url: %s" % self.url)
         self.stopped = True
         await self._ws.close()
         await self.session.close()
