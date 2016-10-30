@@ -76,12 +76,13 @@ class MediaObject(object):
             await fn(value, self)
         return self.get_transport().subscribe(self.id, event, _callback)
 
-    async def release(self):
+    def release(self):
         """
         KMS Release method
         :return: <None>
         """
-        return await self.get_transport().release(self.id)
+        res = self.get_transport().release(self.id)
+        return  res
 
 
 class MediaPipeline(MediaObject):

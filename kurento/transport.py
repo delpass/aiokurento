@@ -130,9 +130,9 @@ class KurentoTransport(object):
             waiter = self._waiters.get(msg_id)
             error = resp['error'].get('message', 'Unknown Error')
             _set_exception(waiter, KurentoTransportException(error, resp))
-        elif 'result' in resp and 'value' in resp['result']:
+        elif 'result' in resp:
             waiter = self._waiters.get(msg_id)
-            _set_result(waiter, resp['result']['value'])
+            _set_result(waiter, resp['result'].get('value'))
 
         else:
             if 'result' in resp and 'sessionId' in resp['result']:
@@ -153,7 +153,7 @@ class KurentoTransport(object):
         # print(request)
         fut = create_future(loop=self._loop)
         self._ws.send_str(json.dumps(request))
-        self._waiters[request['id']] = fut
+        self._waiters[str(request['id'])] = fut
         return fut
 
     def create(self, obj_type, **args):
